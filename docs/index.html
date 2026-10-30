@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Secret Santa Setup Guide</title>
+<meta name="description" content="Step-by-step guide to running your own Secret Santa website with Firebase. No server, free to host.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎁</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbf6ef;--bg2:#f4ece1;--card:#ffffff;--ink:#2a1f1f;--mute:#6f605d;--line:#e8dccd;
+  --red:#c0392b;--red-soft:#fbe4e0;--green:#1f6b4a;--green-soft:#dff0e7;--gold:#d4a017;--gold-soft:#fbf0cf;
+  --code-bg:#1e1a1a;--code-ink:#f3e9e6;--shadow:0 10px 30px rgba(60,30,20,.10);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141010;--bg2:#1b1515;--card:#221a1a;--ink:#f6ece8;--mute:#b3a29e;--line:#3a2d2c;
+  --red:#ef6a5b;--red-soft:#3a1f1c;--green:#5fc79a;--green-soft:#173126;--gold:#f0c24a;--gold-soft:#352b12;
+  --code-bg:#0f0c0c;--shadow:0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --bg:#141010;--bg2:#1b1515;--card:#221a1a;--ink:#f6ece8;--mute:#b3a29e;--line:#3a2d2c;
+  --red:#ef6a5b;--red-soft:#3a1f1c;--green:#5fc79a;--green-soft:#173126;--gold:#f0c24a;--gold-soft:#352b12;
+  --code-bg:#0f0c0c;--shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.15;margin:0 0 .5em}
+h2{font-size:clamp(28px,5vw,40px)}
+h3{font-size:22px}
+p{margin:0 0 1em}
+a{color:var(--green)}
+code{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:.9em;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+section{padding:72px 0}
+.eyebrow{display:inline-block;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+.lead{font-size:18px;color:var(--mute);max-width:640px}
+.btn{display:inline-flex;align-items:center;gap:8px;font:600 16px Inter,sans-serif;text-decoration:none;border-radius:12px;padding:13px 20px;border:2px solid transparent;cursor:pointer;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn.primary{background:var(--red);color:#fff}
+.btn.ghost{border-color:var(--green);color:var(--green);background:transparent}
+
+/* lights + snow */
+.lights{position:fixed;left:0;right:0;top:0;height:14px;z-index:40;pointer-events:none;background:radial-gradient(circle at 10px 7px,#e74c3c 4px,transparent 5px) 0 0/72px 14px,radial-gradient(circle at 34px 7px,#f1c40f 4px,transparent 5px) 0 0/72px 14px,radial-gradient(circle at 58px 7px,#2ecc71 4px,transparent 5px) 0 0/72px 14px;animation:twinkle 1.6s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:1}to{opacity:.45}}
+.snow{position:fixed;top:-5vh;z-index:1;color:#a9cdee;pointer-events:none;user-select:none;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(110vh) translateX(30px)}}
+@media (prefers-reduced-motion:reduce){.snow,.lights{animation:none}.snow{display:none}html{scroll-behavior:auto}}
+
+/* nav + progress */
+nav.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 85%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;align-items:center;gap:16px;min-height:60px;padding-top:14px}
+.brand{font:800 18px Fraunces,serif;text-decoration:none;color:var(--ink);white-space:nowrap}
+.brand span{color:var(--red)}
+.navlinks{display:flex;gap:18px;margin-left:auto;font-weight:600;font-size:14px}
+.navlinks a{color:var(--mute);text-decoration:none}
+.navlinks a:hover{color:var(--ink)}
+.theme{background:none;border:1px solid var(--line);color:var(--ink);border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:16px;flex-shrink:0}
+.progress{height:4px;background:var(--line)}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--gold),var(--green));transition:width .4s}
+@media (max-width:720px){.navlinks{display:none}.theme{margin-left:auto}}
+
+/* hero */
+.hero{position:relative;z-index:2;padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center}
+.hero h1{font-size:clamp(40px,7vw,68px);margin-bottom:16px}
+.hero h1 span{color:var(--red)}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:13px;font-weight:600;border-radius:999px;padding:5px 12px;background:var(--green-soft);color:var(--green)}
+.chip.r{background:var(--red-soft);color:var(--red)}.chip.g{background:var(--gold-soft);color:var(--gold)}
+.phones{position:relative;height:520px}
+.phone{position:absolute;width:230px;aspect-ratio:9/17;border-radius:34px;background:#111;padding:9px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.phone img{width:100%;height:100%;object-fit:cover;object-position:top;border-radius:26px;display:block}
+.phone::before{content:"";position:absolute;top:16px;left:50%;width:70px;height:18px;margin-left:-35px;background:#111;border-radius:12px;z-index:2}
+.phone.p1{left:2%;top:50px;transform:rotate(-8deg)}
+.phone.p2{left:50%;margin-left:-115px;top:0;z-index:2}
+.phone.p3{right:2%;top:50px;transform:rotate(8deg)}
+@media (max-width:860px){
+  .hero .wrap{grid-template-columns:1fr}
+  .phones{height:420px;max-width:440px;width:100%;margin:0 auto}
+  .phone{width:180px}.phone.p2{margin-left:-90px}
+}
+@media (max-width:420px){.phone{width:150px}.phone.p2{margin-left:-75px}.phones{height:340px}}
+
+/* how it works */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:32px;counter-reset:f}
+.flow .f{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 18px;box-shadow:var(--shadow)}
+.flow .f .ic{font-size:34px;line-height:1;margin-bottom:12px}
+.flow .f b{display:block;font-size:17px;margin-bottom:4px}
+.flow .f p{margin:0;color:var(--mute);font-size:15px}
+.flow .f::after{content:"→";position:absolute;right:-14px;top:50%;margin-top:-14px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--red);color:#fff;font-weight:700;z-index:2}
+.flow .f:last-child::after{display:none}
+@media (max-width:820px){.flow{grid-template-columns:1fr 1fr}.flow .f:nth-child(2)::after{display:none}}
+@media (max-width:480px){.flow{grid-template-columns:1fr}.flow .f::after{content:"↓";right:50%;margin-right:-14px;top:auto;bottom:-16px;margin-top:0}.flow .f:nth-child(2)::after{display:flex}}
+
+/* tour */
+.tour{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}
+.tabs button{font:600 14px Inter,sans-serif;border:1px solid var(--line);background:var(--card);color:var(--mute);border-radius:999px;padding:9px 16px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--green);border-color:var(--green);color:#fff}
+.tourgrid{display:grid;grid-template-columns:280px 1fr;gap:40px;align-items:center}
+.tourgrid .phone{position:relative;width:100%;max-width:280px;margin:0 auto;transform:none}
+.tourtext h3{font-size:28px}
+.tourtext ul{padding-left:20px;color:var(--mute)}
+.tourtext li{margin-bottom:6px}
+@media (max-width:720px){.tourgrid{grid-template-columns:1fr;gap:24px}.tourgrid .phone{max-width:240px}}
+
+/* steps */
+.steps{position:relative;margin-top:36px}
+.steps::before{content:"";position:absolute;left:23px;top:0;bottom:0;width:3px;background:repeating-linear-gradient(180deg,var(--red) 0 12px,var(--line) 12px 24px);border-radius:3px}
+.step{position:relative;padding-left:72px;margin-bottom:44px}
+.num{position:absolute;left:0;top:0;width:49px;height:49px;border-radius:50%;background:var(--card);border:3px solid var(--red);color:var(--red);font:800 20px Fraunces,serif;display:flex;align-items:center;justify-content:center;z-index:2;transition:.3s}
+.step.done .num{background:var(--green);border-color:var(--green);color:#fff}
+.step.done .num span{display:none}
+.step.done .num::after{content:"✓"}
+.scard{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.scard .body{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding:26px}
+.scard .body.one{grid-template-columns:1fr}
+@media (max-width:820px){.scard .body{grid-template-columns:1fr}}
+.scard h3{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{font:600 12px Inter,sans-serif;padding:3px 10px;border-radius:999px;background:var(--gold-soft);color:var(--gold)}
+.scard ol{padding-left:22px;margin:0 0 1em}
+.scard ol li{margin-bottom:6px}
+.scard .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 26px;border-top:1px solid var(--line);background:var(--bg2)}
+.donebox{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer;user-select:none}
+.donebox input{width:22px;height:22px;accent-color:var(--green)}
+.tip{border-left:4px solid var(--gold);background:var(--gold-soft);border-radius:0 12px 12px 0;padding:12px 14px;font-size:15px;margin-top:8px}
+.tip.green{border-color:var(--green);background:var(--green-soft)}
+.tip.red{border-color:var(--red);background:var(--red-soft)}
+@media (max-width:520px){.steps::before{left:17px}.num{width:37px;height:37px;font-size:16px}.step{padding-left:50px}.scard .body{padding:18px}.scard .foot{padding:12px 18px}}
+
+/* illustrations (simplified mock screens) */
+.ill{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:14px;position:relative;align-self:start}
+.ill .cap{position:absolute;top:-10px;right:12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--mute)}
+.win{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.win .bar{display:flex;gap:6px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute)}
+.win .bar i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.win .bar i:nth-child(1){background:#ef6a5b}.win .bar i:nth-child(2){background:#f0c24a}.win .bar i:nth-child(3){background:#5fc79a}
+.win .in{padding:14px}
+.field{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:4px 0 10px;background:var(--bg)}
+.lbl{font-size:12px;font-weight:600;color:var(--mute)}
+.fakebtn{display:inline-block;background:#1a73e8;color:#fff;border-radius:8px;padding:7px 14px;font-weight:600;font-size:13px}
+.hl{outline:3px solid var(--red);outline-offset:3px;border-radius:8px;position:relative}
+.pin{position:absolute;width:26px;height:26px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.pin{animation:none}}
+.icons{display:flex;gap:10px}
+.icons span{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;background:var(--bg);font-size:13px}
+.prov{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+.prov:last-child{border:0}
+.sw{width:38px;height:22px;border-radius:999px;background:var(--line);position:relative;flex-shrink:0}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.3s}
+.sw.on{background:#1a73e8}.sw.on::after{left:19px}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--bg)}
+.radio i{width:16px;height:16px;border-radius:50%;border:2px solid var(--mute);flex-shrink:0;margin-top:3px}
+.radio.on{border-color:#1a73e8}.radio.on i{border:5px solid #1a73e8}
+.radio small{display:block;color:var(--mute)}
+
+/* code */
+.code{position:relative;background:var(--code-bg);color:var(--code-ink);border-radius:12px;font:13px/1.55 ui-monospace,"Cascadia Code",Consolas,monospace;overflow:hidden}
+.code pre{margin:0;padding:16px;overflow-x:auto;max-height:340px}
+.code .k{color:#ff9c8a}.code .s{color:#9fe0b8}.code .c{color:#8d7f7c;font-style:italic}.code .n{color:#f6cf6b}
+.code .del{display:block;background:rgba(239,106,91,.18);text-decoration:line-through;opacity:.8}
+.code .add{display:block;background:rgba(95,199,154,.18)}
+.copy{position:absolute;top:8px;right:8px;font:600 12px Inter,sans-serif;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:5px 10px;cursor:pointer}
+.term .bar{background:#2b2424;padding:8px 12px;font-size:12px;color:#b3a29e}
+
+.pokes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.poke{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px 3px 3px;font-size:13px;font-weight:600}
+.poke img{width:32px;height:32px}
+.subtabs{display:flex;gap:6px;margin-bottom:14px}
+.subtabs button{font:600 14px Inter,sans-serif;flex:1;border:1px solid var(--line);background:var(--card);color:var(--mute);border-radius:10px;padding:10px;cursor:pointer}
+.subtabs button[aria-selected="true"]{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+
+/* run strip */
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:8px}
+.strip figure{margin:0;text-align:center}
+.strip .phone{position:relative;width:100%;padding:6px;border-radius:22px;transform:none}
+.strip .phone::before{display:none}
+.strip .phone img{border-radius:17px}
+.strip figcaption{font-size:14px;font-weight:600;margin-top:10px}
+.strip figcaption small{display:block;font-weight:400;color:var(--mute)}
+@media (max-width:820px){.strip{grid-template-columns:repeat(5,170px);overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory}.strip figure{scroll-snap-align:start}}
+
+/* architecture */
+.arch{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:var(--shadow);margin-top:28px}
+.arch svg{width:100%;height:auto;display:block}
+.arch text{font-family:Inter,sans-serif;fill:var(--ink)}
+.arch .m{fill:var(--mute)}
+.table{width:100%;border-collapse:collapse;margin-top:20px;font-size:15px}
+.table th,.table td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.table th{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
+.tscroll{overflow-x:auto}
+
+/* security */
+.sec{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:28px}
+.sec .box{border-radius:18px;padding:22px;border:1px solid var(--line);background:var(--card)}
+.sec .box.ok{border-top:5px solid var(--green)}
+.sec .box.no{border-top:5px solid var(--red)}
+.sec ul{padding-left:20px;margin:0}
+.sec li{margin-bottom:8px}
+@media (max-width:720px){.sec{grid-template-columns:1fr}}
+
+/* faq */
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px}
+summary{cursor:pointer;padding:16px 18px;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:20px;line-height:1;color:var(--red);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details .a{padding:0 18px 16px;color:var(--mute)}
+
+footer{border-top:1px solid var(--line);padding:36px 0 56px;color:var(--mute);font-size:14px;text-align:center}
+.celebrate{display:none;text-align:center;margin-top:8px;font-family:Fraunces,serif;font-size:24px;color:var(--green)}
+.celebrate.on{display:block}
+</style>
+</head>
+<body>
+<div class="lights" aria-hidden="true"></div>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brand" href="#">🎄 Secret <span>Santa</span></a>
+    <div class="navlinks">
+      <a href="#how">How it works</a><a href="#tour">Tour</a><a href="#setup">Setup</a><a href="#security">Security</a><a href="#help">Help</a>
+    </div>
+    <button class="theme" id="theme" aria-label="Toggle dark mode">🌙</button>
+  </div>
+  <div class="progress" title="Setup progress"><i id="bar"></i></div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Free · No server · One HTML file</span>
+      <h1>Run your own <span>Secret Santa</span> website</h1>
+      <p class="lead">Private login codes, wishlists from a quick questionnaire, Pokémon code names, anonymous questions and a gift-day reveal. Set it up yourself in about 20 minutes with a free Firebase project.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#setup">🎁 Start the setup</a>
+        <a class="btn ghost" href="demo/" target="_blank" rel="noopener">▶ Try the live demo</a>
+      </div>
+      <div class="chips">
+        <span class="chip">📱 Works on phones</span><span class="chip r">🔥 Firebase</span><span class="chip g">🌙 Dark mode</span><span class="chip" id="repochip" hidden><a id="repolink" href="#" style="color:inherit;text-decoration:none">⭐ View the code on GitHub</a></span>
+      </div>
+    </div>
+    <div class="phones" aria-label="Screenshots of the site">
+      <div class="phone p1"><img src="images/wishlist.png" alt="Wishlist questionnaire screen"></div>
+      <div class="phone p2"><img src="images/match.png" alt="My Match screen showing the code name Snorlax"></div>
+      <div class="phone p3"><img src="images/reveal.png" alt="Reveal screen"></div>
+    </div>
+  </div>
+</header>
+
+<section id="how">
+  <div class="wrap">
+    <span class="eyebrow">How it works</span>
+    <h2>Four moments, zero spreadsheets</h2>
+    <p class="lead">The organizer sets things up once. Everyone else only needs the link.</p>
+    <div class="flow">
+      <div class="f"><div class="ic">👑</div><b>Organizer creates the event</b><p>Name, budget, due date and the list of people.</p></div>
+      <div class="f"><div class="ic">🎅</div><b>Everyone picks their name</b><p>Each person gets a private code, fills out a wishlist and receives a Pokémon code name.</p></div>
+      <div class="f"><div class="ic">🎲</div><b>Names are drawn</b><p>Nobody gets themselves or their partner. You see your match only by code name.</p></div>
+      <div class="f"><div class="ic">🎉</div><b>Gift day reveal</b><p>On the due date everyone finds out who their Secret Santa was.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="tour" class="tour">
+  <div class="wrap">
+    <span class="eyebrow">Take a tour</span>
+    <h2>What your group will see</h2>
+    <div class="tabs" role="tablist" id="tourtabs"></div>
+    <div class="tourgrid">
+      <div class="phone"><img id="tourimg" src="images/home.png" alt=""></div>
+      <div class="tourtext" id="tourtext" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section id="setup">
+  <div class="wrap">
+    <span class="eyebrow">Setup guide</span>
+    <h2>Set it up in 8 steps</h2>
+    <p class="lead">Tick each step as you finish it. Your progress is saved in this browser and shown in the bar at the top. The screen illustrations are simplified, so the real Firebase and GitHub pages may look slightly different.</p>
+    <div class="tip green" style="max-width:640px">Before you start, download the project: on the GitHub repository, click <b>Code → Download ZIP</b> and unzip it. You'll edit <code>index.html</code> with any text editor (Notepad works).</div>
+
+    <div class="steps">
+
+      <!-- 1 -->
+      <div class="step" data-step="1">
+        <div class="num"><span>1</span></div>
+        <div class="scard">
+          <div class="body">
+            <div>
+              <h3>Create a Firebase project <span class="tag">~2 min</span></h3>
+              <p>Firebase is Google's free app backend. It stores the event, wishlists and matches.</p>
+              <ol>
+                <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase console</a> and sign in.</li>
+                <li>Click <b>Create a project</b>.</li>
+                <li>Name it, for example <code>secret-santa</code>. Firebase adds a few characters to make your <b>project ID</b>.</li>
+                <li>Turn Google Analytics off (not needed) and click <b>Create project</b>.</li>
+              </ol>
+            </div>
+            <div class="ill"><span class="cap">Illustration</span>
+              <div class="win"><div class="bar"><i></i><i></i><i></i>&nbsp; console.firebase.google.com</div>
+                <div class="in">
+                  <b style="font-size:16px">Create a project</b>
+                  <div class="lbl" style="margin-top:10px">Project name</div>
+                  <div class="field hl">secret-santa</div>
+                  <div class="lbl">Project ID</div>
+                  <div class="field" style="color:var(--mute)">secret-santa-1a2b3 ✏️</div>
+                  <div class="prov"><span>Enable Google Analytics</span><span class="sw"></span></div>
+                  <div style="text-align:right;margin-top:10px"><span class="fakebtn">Create project</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> I made my project</label><a href="#step2">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="step" data-step="2" id="step2">
+        <div class="num"><span>2</span></div>
+        <div class="scard">
+          <div class="body">
+            <div>
+              <h3>Connect the website to Firebase <span class="tag">~3 min</span></h3>
+              <ol>
+                <li>On <b>Project Overview</b>, click the <b>Web</b> icon <code>&lt;/&gt;</code>.</li>
+                <li>Give it a nickname and click <b>Register app</b>. Leave "Firebase Hosting" unticked.</li>
+                <li>Copy the values inside <code>firebaseConfig</code>.</li>
+                <li>In <code>index.html</code>, replace each <code>PASTE_…</code> value with yours. Keep the quotes.</li>
+              </ol>
+              <div class="tip">Is it safe for this to be public? <b>Yes.</b> Every Firebase website sends this config to the browser. It identifies your project but isn't a password. Step 5 is what protects the data.</div>
+            </div>
+            <div>
+              <div class="ill" style="margin-bottom:14px"><span class="cap">Illustration</span>
+                <div class="lbl" style="margin-bottom:8px">Get started by adding Firebase to your app</div>
+                <div class="icons"><span>iOS</span><span>🤖</span><span class="hl" style="border-color:var(--red);color:var(--red)">&lt;/&gt;</span><span>▲</span></div>
+              </div>
+              <div class="code"><pre><span class="c">// index.html, near the top of the &lt;script&gt;</span>
+<span class="k">const</span> FIREBASE_CONFIG = {
+<span class="del">  apiKey: <span class="s">"PASTE_YOUR_API_KEY"</span>,</span><span class="add">  apiKey: <span class="s">"AIzaSyB…your key…"</span>,</span><span class="del">  projectId: <span class="s">"PASTE_YOUR_PROJECT_ID"</span>,</span><span class="add">  projectId: <span class="s">"secret-santa-1a2b3"</span>,</span>  <span class="c">// …and the other 4 values</span>
+};</pre></div>
+            </div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> I pasted my config</label><a href="#step3">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="step" data-step="3" id="step3">
+        <div class="num"><span>3</span></div>
+        <div class="scard">
+          <div class="body">
+            <div>
+              <h3>Turn on anonymous sign-in <span class="tag">~1 min</span></h3>
+              <p>The site signs each visitor in to Firebase quietly, with no email or password. The database only answers signed-in visitors.</p>
+              <ol>
+                <li>Left menu: <b>Build → Authentication</b>, then <b>Get started</b>.</li>
+                <li>Open the <b>Sign-in method</b> tab.</li>
+                <li>Click <b>Anonymous</b>, switch it on, and click <b>Save</b>.</li>
+              </ol>
+            </div>
+            <div class="ill"><span class="cap">Illustration</span>
+              <div class="win"><div class="bar"><i></i><i></i><i></i>&nbsp; Authentication › Sign-in method</div>
+                <div class="in">
+                  <div class="prov"><span>Email/Password</span><span class="sw"></span></div>
+                  <div class="prov"><span>Google</span><span class="sw"></span></div>
+                  <div class="prov hl" style="padding:9px 8px"><b>Anonymous</b><span class="sw on" id="anonsw"></span></div>
+                  <div style="text-align:right;margin-top:12px"><span class="fakebtn">Save</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> Anonymous sign-in is on</label><a href="#step4">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="step" data-step="4" id="step4">
+        <div class="num"><span>4</span></div>
+        <div class="scard">
+          <div class="body">
+            <div>
+              <h3>Create the database <span class="tag">~2 min</span></h3>
+              <ol>
+                <li>Left menu: <b>Build → Firestore Database</b>, then <b>Create database</b>.</li>
+                <li>If asked for an edition, pick <b>Standard</b>.</li>
+                <li>Choose a <b>location</b> near your group. This can't be changed later.</li>
+                <li>Select <b>Start in production mode</b> and click <b>Create</b>.</li>
+              </ol>
+              <div class="tip green">You don't need to create anything inside the database. The site creates it the first time you open it.</div>
+            </div>
+            <div class="ill"><span class="cap">Illustration</span>
+              <div class="win"><div class="bar"><i></i><i></i><i></i>&nbsp; Create database</div>
+                <div class="in">
+                  <div class="lbl">Location</div>
+                  <div class="field">nam5 (United States) ▾</div>
+                  <div class="radio on hl"><i></i><div><b>Start in production mode</b><small>Data is private until you add rules.</small></div></div>
+                  <div class="radio"><i></i><div><b>Start in test mode</b><small>Open to anyone for 30 days.</small></div></div>
+                  <div style="text-align:right;margin-top:6px"><span class="fakebtn">Create</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> My database exists</label><a href="#step5">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <div class="step" data-step="5" id="step5">
+        <div class="num"><span>5</span></div>
+        <div class="scard">
+          <div class="body">
+            <div>
+              <h3>Add the security rules <span class="tag">~1 min</span></h3>
+              <p>Production mode blocks everything, so the site won't work until you publish these rules.</p>
+              <ol>
+                <li>In <b>Firestore Database</b>, open the <b>Rules</b> tab.</li>
+                <li>Delete everything in the editor.</li>
+                <li>Click <b>Copy</b> on the box here (it's the same as <code>firestore.rules</code> in the project) and paste.</li>
+                <li>Click <b>Publish</b>.</li>
+              </ol>
+              <div class="tip">These rules keep strangers out and only allow the data the site uses. Read <a href="#security">Security</a> to see what they don't cover.</div>
+            </div>
+            <div class="code"><button class="copy" data-copy="rules">Copy</button><pre id="rules"><span class="k">rules_version</span> = <span class="s">'2'</span>;
+<span class="k">service</span> cloud.firestore {
+  <span class="k">match</span> /databases/{database}/documents {
+
+    <span class="k">function</span> <span class="n">signedIn</span>() {
+      <span class="k">return</span> request.auth != <span class="k">null</span>;
+    }
+
+    <span class="k">match</span> /event/{id} {
+      <span class="k">allow read</span>: <span class="k">if</span> signedIn() && id == <span class="s">'main'</span>;
+      <span class="k">allow write</span>: <span class="k">if</span> signedIn() && id == <span class="s">'main'</span>
+        && request.resource.data.keys().hasOnly([<span class="s">'title'</span>, <span class="s">'budget'</span>, <span class="s">'date'</span>, <span class="s">'drawn'</span>, <span class="s">'revealed'</span>]);
+    }
+
+    <span class="k">match</span> /people/{code} {
+      <span class="k">allow read, delete</span>: <span class="k">if</span> signedIn();
+      <span class="k">allow create, update</span>: <span class="k">if</span> signedIn()
+        && request.resource.data.keys().hasOnly([
+             <span class="s">'name'</span>, <span class="s">'admin'</span>, <span class="s">'claimed'</span>, <span class="s">'done'</span>, <span class="s">'bought'</span>, <span class="s">'kindness'</span>,
+             <span class="s">'answers'</span>, <span class="s">'codename'</span>, <span class="s">'giveTo'</span>
+           ])
+        && request.resource.data.name <span class="k">is</span> string
+        && request.resource.data.name.size() <= <span class="n">60</span>;
+    }
+
+    <span class="k">match</span> /chats/{code} {
+      <span class="k">allow read</span>: <span class="k">if</span> signedIn();
+      <span class="k">allow write</span>: <span class="k">if</span> signedIn()
+        && request.resource.data.keys().hasOnly([<span class="s">'items'</span>])
+        && request.resource.data.items <span class="k">is</span> list
+        && request.resource.data.items.size() <= <span class="n">4</span>;
+    }
+
+    <span class="k">match</span> /{document=**} {
+      <span class="k">allow read, write</span>: <span class="k">if</span> <span class="k">false</span>;
+    }
+  }
+}</pre></div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> Rules are published</label><a href="#step6">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 6 -->
+      <div class="step" data-step="6" id="step6">
+        <div class="num"><span>6</span></div>
+        <div class="scard">
+          <div class="body">
+            <div>
+              <h3>Make it yours <span class="tag">optional</span></h3>
+              <p>All the settings are near the top of the <code>&lt;script&gt;</code> in <code>index.html</code>.</p>
+              <ul style="padding-left:20px">
+                <li><b>COUPLES:</b> pairs who shouldn't draw each other. The names must match the names you type when you create the event.</li>
+                <li><b>DEX:</b> the Pokémon code names. The number is the Pokédex number, which is used for the picture. Add at least one per person.</li>
+                <li><b>BONUS:</b> an optional popup asking people whether they'd like to gift your pets or kids too.</li>
+                <li><b>Q:</b> the questionnaire questions and answer choices.</li>
+              </ul>
+              <div class="pokes" id="pokes"></div>
+            </div>
+            <div class="code"><pre><span class="k">const</span> COUPLES=[
+  [<span class="s">"Alex"</span>,<span class="s">"Jordan"</span>],   <span class="c">// these two won't match</span>
+  [<span class="s">"Sam"</span>,<span class="s">"Taylor"</span>],
+];
+
+<span class="k">const</span> DEX={<span class="s">"Pikachu"</span>:<span class="n">25</span>,<span class="s">"Eevee"</span>:<span class="n">133</span>,<span class="s">"Snorlax"</span>:<span class="n">143</span>, <span class="c">…</span>};
+
+<span class="k">const</span> BONUS={
+  enabled:<span class="k">true</span>,                <span class="c">// show the popup</span>
+  title:<span class="s">"Biscuit &amp; Pepper"</span>,
+  pics:[[<span class="s">"bonus1.jpg"</span>,<span class="s">"🐶"</span>,<span class="s">"Biscuit"</span>]]
+};</pre></div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> Customized (or skipped)</label><a href="#step7">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 7 -->
+      <div class="step" data-step="7" id="step7">
+        <div class="num"><span>7</span></div>
+        <div class="scard">
+          <div class="body one">
+            <div>
+              <h3>Put it online <span class="tag">~5 min</span></h3>
+              <p>Pick one. GitHub Pages is all clicks; Firebase Hosting uses a few commands and also uploads your rules.</p>
+              <div class="subtabs" role="tablist">
+                <button role="tab" aria-selected="true" data-host="gh">🐙 GitHub Pages</button>
+                <button role="tab" aria-selected="false" data-host="fb">🔥 Firebase Hosting</button>
+              </div>
+            </div>
+          </div>
+          <div class="body" data-hostpane="gh" style="padding-top:0">
+            <div>
+              <ol>
+                <li>On GitHub, create a <b>New repository</b> and set it to <b>Public</b>.</li>
+                <li>Click <b>uploading an existing file</b>, drag in your edited <code>index.html</code> (and any bonus images), then click <b>Commit changes</b>.</li>
+                <li>Go to <b>Settings → Pages</b>. Set Source to <b>Deploy from a branch</b>, branch <b>main</b>, folder <b>/ (root)</b>, and click <b>Save</b>.</li>
+                <li>Wait a minute or two. Your address appears at the top, for example <code>your-name.github.io/secret-santa</code>.</li>
+                <li>In Firebase: <b>Authentication → Settings → Authorized domains → Add domain</b>, and add <code>your-name.github.io</code>.</li>
+              </ol>
+            </div>
+            <div class="ill"><span class="cap">Illustration</span>
+              <div class="win"><div class="bar"><i></i><i></i><i></i>&nbsp; Settings › Pages</div>
+                <div class="in">
+                  <b>Build and deployment</b>
+                  <div class="lbl" style="margin-top:10px">Source</div>
+                  <div class="field">Deploy from a branch ▾</div>
+                  <div class="lbl">Branch</div>
+                  <div style="display:flex;gap:8px;align-items:center" class="hl">
+                    <div class="field" style="margin:0;flex:1">main ▾</div><div class="field" style="margin:0;flex:1">/ (root) ▾</div><span class="fakebtn" style="background:#1f883d">Save</span>
+                  </div>
+                  <div class="tip green" style="margin-top:16px;font-size:13px">✅ Your site is live at <b>your-name.github.io/secret-santa</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="body" data-hostpane="fb" style="padding-top:0" hidden>
+            <div>
+              <ol>
+                <li>Install <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js</a> (the LTS version).</li>
+                <li>Open a terminal in the folder that contains <code>index.html</code>.</li>
+                <li>Run the three commands, using your project ID from step 1.</li>
+                <li>The last line it prints is your site's address, such as <code>secret-santa-1a2b3.web.app</code>.</li>
+              </ol>
+              <div class="tip">On Windows, if you see <i>"running scripts is disabled on this system"</i>, type <code>npm.cmd</code> and <code>firebase.cmd</code> instead.</div>
+            </div>
+            <div class="code term"><div class="bar">Terminal</div><button class="copy" data-copy="cmds">Copy</button><pre id="cmds">npm install -g firebase-tools
+firebase login
+firebase deploy --project YOUR_PROJECT_ID</pre><pre style="padding-top:0;color:#9fe0b8">✔  Deploy complete!
+Hosting URL: https://secret-santa-1a2b3.web.app</pre></div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> My site is online</label><a href="#step8">Next step ↓</a></div>
+        </div>
+      </div>
+
+      <!-- 8 -->
+      <div class="step" data-step="8" id="step8">
+        <div class="num"><span>8</span></div>
+        <div class="scard">
+          <div class="body one">
+            <div>
+              <h3>Run your Secret Santa 🎄</h3>
+              <div class="tip red" style="margin-bottom:18px"><b>Open your site yourself first.</b> Whoever opens it while the database is empty becomes the organizer. Save the code it shows you; it's the only way back in as the organizer.</div>
+              <div class="strip">
+                <figure><div class="phone"><img src="images/setup.png" alt="Setup screen" loading="lazy"></div><figcaption>1. Create the event<small>Your name plus everyone else's</small></figcaption></figure>
+                <figure><div class="phone"><img src="images/pick.png" alt="Pick my name screen" loading="lazy"></div><figcaption>2. Share the link<small>Each person picks their name</small></figcaption></figure>
+                <figure><div class="phone"><img src="images/wishlist.png" alt="Wishlist screen" loading="lazy"></div><figcaption>3. Wishlists<small>Everyone fills out the questionnaire</small></figcaption></figure>
+                <figure><div class="phone"><img src="images/draw.png" alt="Organizer panel" loading="lazy"></div><figcaption>4. Draw names<small>Organizer tab → Draw names</small></figcaption></figure>
+                <figure><div class="phone"><img src="images/reveal.png" alt="Reveal screen" loading="lazy"></div><figcaption>5. Reveal<small>Automatic on the due date</small></figcaption></figure>
+              </div>
+              <p style="margin-top:18px">Someone lost their code? In the Organizer tab, click <b>Reset login</b> next to their name, then have them pick their name again. Their wishlist and match stay the same.</p>
+            </div>
+          </div>
+          <div class="foot"><label class="donebox"><input type="checkbox"> My event is running!</label><a href="#security">Security notes ↓</a></div>
+        </div>
+      </div>
+    </div>
+    <div class="celebrate" id="celebrate">🎉 All set. Merry Christmas! 🎅</div>
+  </div>
+</section>
+
+<section id="arch" class="tour">
+  <div class="wrap">
+    <span class="eyebrow">Under the hood</span>
+    <h2>How the pieces fit</h2>
+    <p class="lead">There's no server of your own. The page in each person's browser talks straight to Firebase.</p>
+    <div class="arch">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Diagram: browsers load index.html from GitHub Pages or Firebase Hosting, sign in anonymously with Firebase Authentication, and read and write the event, people and chats collections in Cloud Firestore, protected by security rules.">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--red)"/></marker></defs>
+        <rect x="20" y="40" width="200" height="220" rx="18" fill="var(--bg2)" stroke="var(--line)"/>
+        <text x="120" y="76" text-anchor="middle" font-size="30">📱 💻</text>
+        <text x="120" y="112" text-anchor="middle" font-weight="700" font-size="17">Everyone's browser</text>
+        <text x="120" y="138" text-anchor="middle" class="m" font-size="13">runs index.html</text>
+        <rect x="44" y="164" width="152" height="74" rx="10" fill="var(--card)" stroke="var(--line)"/>
+        <text x="120" y="190" text-anchor="middle" class="m" font-size="12">Hosted on</text>
+        <text x="120" y="210" text-anchor="middle" font-size="13" font-weight="600">GitHub Pages or</text>
+        <text x="120" y="228" text-anchor="middle" font-size="13" font-weight="600">Firebase Hosting</text>
+
+        <rect x="340" y="40" width="200" height="90" rx="18" fill="var(--gold-soft)" stroke="var(--gold)"/>
+        <text x="440" y="76" text-anchor="middle" font-weight="700" font-size="17">🔑 Authentication</text>
+        <text x="440" y="102" text-anchor="middle" class="m" font-size="13">anonymous sign-in</text>
+
+        <rect x="340" y="170" width="200" height="90" rx="18" fill="var(--red-soft)" stroke="var(--red)"/>
+        <text x="440" y="206" text-anchor="middle" font-weight="700" font-size="17">🛡️ Security rules</text>
+        <text x="440" y="232" text-anchor="middle" class="m" font-size="13">checked on every request</text>
+
+        <rect x="660" y="40" width="220" height="220" rx="18" fill="var(--green-soft)" stroke="var(--green)"/>
+        <text x="770" y="76" text-anchor="middle" font-weight="700" font-size="17">🗄️ Cloud Firestore</text>
+        <rect x="684" y="98" width="172" height="40" rx="8" fill="var(--card)" stroke="var(--line)"/><text x="770" y="123" text-anchor="middle" font-size="14">event</text>
+        <rect x="684" y="146" width="172" height="40" rx="8" fill="var(--card)" stroke="var(--line)"/><text x="770" y="171" text-anchor="middle" font-size="14">people</text>
+        <rect x="684" y="194" width="172" height="40" rx="8" fill="var(--card)" stroke="var(--line)"/><text x="770" y="219" text-anchor="middle" font-size="14">chats</text>
+
+        <path d="M220 110 C 280 100, 290 85, 336 85" fill="none" stroke="var(--red)" stroke-width="2.5" marker-end="url(#ah)"/>
+        <text x="278" y="80" text-anchor="middle" class="m" font-size="12">1. sign in</text>
+        <path d="M220 200 C 280 210, 290 215, 336 215" fill="none" stroke="var(--red)" stroke-width="2.5" marker-end="url(#ah)"/>
+        <text x="278" y="238" text-anchor="middle" class="m" font-size="12">2. read / write</text>
+        <path d="M540 215 L 656 175" fill="none" stroke="var(--red)" stroke-width="2.5" marker-end="url(#ah)"/>
+        <text x="598" y="214" text-anchor="middle" class="m" font-size="12">if allowed</text>
+      </svg>
+    </div>
+    <div class="tscroll">
+      <table class="table">
+        <tr><th>Collection</th><th>One document per</th><th>What's inside</th></tr>
+        <tr><td><code>event</code></td><td>the event (<code>main</code>)</td><td>Title, budget, due date, whether names are drawn and revealed</td></tr>
+        <tr><td><code>people</code></td><td>person (ID = their login code)</td><td>Name, organizer flag, wishlist answers, code name, who they're buying for, gift bought</td></tr>
+        <tr><td><code>chats</code></td><td>person</td><td>Up to 4 anonymous questions to that person, with answers</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="wrap">
+    <span class="eyebrow">Security</span>
+    <h2>Made for people who trust each other</h2>
+    <p class="lead">This keeps the surprise from people who play fair, like a family or a group of friends. It won't stop someone determined to snoop, so here is exactly what is and isn't protected.</p>
+    <div class="sec">
+      <div class="box ok">
+        <h3>✅ Protected</h3>
+        <ul>
+          <li>People who never open the site can't read or write anything.</li>
+          <li>Only the three collections and the fields the site uses can be written.</li>
+          <li>Each question thread is capped at 4 messages.</li>
+          <li>The organizer screen never shows anyone's login code.</li>
+        </ul>
+      </div>
+      <div class="box no">
+        <h3>⚠️ Known limitations</h3>
+        <ul>
+          <li>The "Pick my name" screen loads every person's record, so anyone using the browser's developer tools can see all codes, wishlists and matches.</li>
+          <li>Your match is stored by their login code, so you could log in as them.</li>
+          <li>Organizer-only buttons are hidden in the browser, but the rules don't check who the organizer is.</li>
+          <li>Anonymous sign-in proves someone opened the site, not who they are.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tip green" style="margin-top:18px"><b>How it could be hardened:</b> a separate names-only list for "Pick my name", rules that let each person read only their own record, matches stored by a random ID, real sign-in for organizers, and a server-side draw with a Firebase Cloud Function so nobody sees all the matches.</div>
+    <div class="tip" style="margin-top:10px">Don't put addresses, phone numbers or passwords in wishlists, and delete the data after the event.</div>
+  </div>
+</section>
+
+<section id="help" class="tour">
+  <div class="wrap">
+    <span class="eyebrow">Troubleshooting</span>
+    <h2>Something not working?</h2>
+    <div style="margin-top:24px">
+      <details><summary>"Almost there. Paste your Firebase config…"</summary><div class="a"><code>FIREBASE_CONFIG</code> in <code>index.html</code> still has the <code>PASTE_…</code> placeholders. Go back to <a href="#step2">step 2</a>.</div></details>
+      <details><summary>"Could not reach the database"</summary><div class="a">Check that all six config values are pasted correctly (<a href="#step2">step 2</a>), Anonymous sign-in is on (<a href="#step3">step 3</a>), the database exists (<a href="#step4">step 4</a>), and the rules are published (<a href="#step5">step 5</a>). Press F12 and open the Console tab to see the exact error.</div></details>
+      <details><summary>It works on my computer but not on GitHub Pages</summary><div class="a">Add <code>your-name.github.io</code> under <b>Authentication → Settings → Authorized domains</b>, and give GitHub a minute or two to update after each upload.</div></details>
+      <details><summary>"Could not save. Check your Firestore rules."</summary><div class="a">Make sure you pasted the entire rules file and clicked <b>Publish</b> (<a href="#step5">step 5</a>).</div></details>
+      <details><summary>"Couldn't find a valid draw with those rules."</summary><div class="a">There are too many "can't match" pairs for the group size. Remove some pairs, or add more people.</div></details>
+      <details><summary>A couple got matched together</summary><div class="a">The names in <code>COUPLES</code> must match the names typed on the setup screen (capital letters don't matter).</div></details>
+      <details><summary>I lost the organizer code</summary><div class="a">In the Firebase console, open <b>Firestore Database → Data → people</b> and find the document whose <code>admin</code> field is <code>true</code>. Its document ID is your code.</div></details>
+      <details><summary>How do I start over next year?</summary><div class="a">In <b>Firestore Database → Data</b>, delete the <code>event</code>, <code>people</code> and <code>chats</code> collections (⋮ menu → Delete collection). The site shows the setup screen again.</div></details>
+      <details><summary>Does this cost anything?</summary><div class="a">No. Firebase's free Spark plan easily covers a family-sized group, with no credit card, and GitHub Pages is free for public repositories.</div></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>🎄 ❄️ Merry Christmas! ❄️ 🎅</p>
+    <p>Built with HTML, CSS, JavaScript and Firebase (Authentication + Cloud Firestore). Pokémon artwork from <a href="https://github.com/PokeAPI/sprites" target="_blank" rel="noopener">PokeAPI sprites</a>. Pokémon is a trademark of Nintendo, Creatures Inc. and GAME FREAK inc. This project is not affiliated with them.</p>
+  </div>
+</footer>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const store = {
+  get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+
+// Theme toggle
+const root = document.documentElement;
+const dark = () => root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+const paintTheme = () => { $('#theme').textContent = dark() ? '☀️' : '🌙'; };
+const saved = store.get('guide-theme'); if (saved) root.dataset.theme = saved;
+paintTheme();
+$('#theme').onclick = () => { root.dataset.theme = dark() ? 'light' : 'dark'; store.set('guide-theme', root.dataset.theme); paintTheme(); };
+
+// Link to the repository when hosted on GitHub Pages (user.github.io/repo)
+const gh = location.hostname.match(/^([^.]+)\.github\.io$/);
+if (gh) {
+  const repo = location.pathname.split('/')[1];
+  $('#repolink').href = `https://github.com/${gh[1]}/${repo || gh[1] + '.github.io'}`;
+  $('#repochip').hidden = false;
+}
+
+// Snow
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  for (let i = 0; i < 18; i++) {
+    const f = document.createElement('i'); f.className = 'snow'; f.textContent = '❄'; f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = `left:${Math.random() * 100}vw;font-size:${8 + Math.random() * 10}px;opacity:${.35 + Math.random() * .4};animation-duration:${10 + Math.random() * 10}s;animation-delay:-${Math.random() * 15}s`;
+    document.body.append(f);
+  }
+}
+
+// Tour
+const TOUR = [
+  ['home', '🏠 Home', 'Your home screen', ['A countdown to gift day and the budget.', 'Your Pokémon code name.', 'A checkbox for "I\'ve bought my gift". The organizer only sees the total, never who.', 'Your login code, hidden until you tap Show.']],
+  ['wishlist', '📝 Wishlist', 'A quick questionnaire', ['Tap to choose gift types, treats, hobbies and colors.', 'Mark gifts you\'d rather not get.', 'Optional clothing sizes and free-form notes.', 'Finishing it gives you a random Pokémon code name.']],
+  ['match', '🎁 My Match', 'See who you\'re buying for', ['Your match appears only by code name and picture.', 'Their full wishlist is right below.', 'Nobody else sees who you got.']],
+  ['msgs', '💬 Messages', 'Ask anonymous questions', ['Ask your match up to 4 questions.', 'They answer without knowing who asked.', 'Answer questions from your own Secret Santa.']],
+  ['org', '👑 Organizer', 'Everything the organizer needs', ['See who has joined and finished their wishlist.', 'Add or remove people, and reset lost logins.', 'Add extra "can\'t match" pairs and draw names.', 'Reveal early, or let it happen on the due date.']],
+  ['reveal', '🎉 Reveal', 'Gift day!', ['On the due date a Reveal tab appears.', 'See who your Secret Santa was, and who you bought for.']]
+];
+const showTour = i => {
+  const [img, , title, pts] = TOUR[i];
+  $('#tourimg').src = `images/${img}.png`; $('#tourimg').alt = title;
+  $('#tourtext').innerHTML = `<h3>${title}</h3><ul>${pts.map(p => `<li>${p}</li>`).join('')}</ul><a class="btn ghost" href="demo/" target="_blank" rel="noopener">▶ Try it in the demo</a>`;
+  $$('#tourtabs button').forEach((b, j) => b.setAttribute('aria-selected', i === j));
+};
+$('#tourtabs').innerHTML = TOUR.map(([, label], i) => `<button role="tab" data-i="${i}">${label}</button>`).join('');
+$$('#tourtabs button').forEach(b => b.onclick = () => showTour(+b.dataset.i));
+showTour(0);
+TOUR.forEach(([img]) => { new Image().src = `images/${img}.png`; });
+
+// Pokémon chips
+const DEX = { Pikachu: 25, Eevee: 133, Bulbasaur: 1, Charmander: 4, Squirtle: 7, Snorlax: 143 };
+$('#pokes').innerHTML = Object.entries(DEX).map(([n, d]) => `<span class="poke"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${d}.png" alt="" loading="lazy">${n}</span>`).join('');
+
+// Hosting sub-tabs
+$$('[data-host]').forEach(b => b.onclick = () => {
+  $$('[data-host]').forEach(x => x.setAttribute('aria-selected', x === b));
+  $$('[data-hostpane]').forEach(p => p.hidden = p.dataset.hostpane !== b.dataset.host);
+});
+
+// Copy buttons
+$$('[data-copy]').forEach(b => b.onclick = async () => {
+  const text = document.getElementById(b.dataset.copy).textContent;
+  try { await navigator.clipboard.writeText(text); b.textContent = 'Copied!'; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents(document.getElementById(b.dataset.copy)); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = 'Press Ctrl+C'; }
+  setTimeout(() => b.textContent = 'Copy', 1600);
+});
+
+// Step progress
+const steps = $$('.step');
+let done = {}; try { done = JSON.parse(store.get('guide-steps')) || {}; } catch (e) {}
+const paint = () => {
+  let n = 0;
+  steps.forEach(s => { const on = !!done[s.dataset.step]; s.classList.toggle('done', on); s.querySelector('.donebox input').checked = on; n += on; });
+  $('#bar').style.width = (n / steps.length * 100) + '%';
+  $('#celebrate').classList.toggle('on', n === steps.length);
+};
+steps.forEach(s => s.querySelector('.donebox input').onchange = e => { done[s.dataset.step] = e.target.checked; store.set('guide-steps', JSON.stringify(done)); paint(); });
+paint();
+</script>
+</body>
+</html>

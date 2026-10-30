@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// Firestore security rules for the Secret Santa site.
+// Paste these into Firebase Console > Firestore Database > Rules, then click Publish.
+//
+// What these rules do:
+//  - Block everyone who has not signed in (the site signs visitors in anonymously).
+//  - Only allow the three collections the site uses: event, people, chats.
+//  - Only allow the fields the site writes, so the database can't be filled with junk.
+//  - Cap each person's question thread at 4 messages.
+//
+// What they do NOT do: see "Security notes" in README.md.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // The single event settings document: event/main
+    match /event/{id} {
+      allow read: if signedIn() && id == 'main';
+      allow write: if signedIn() && id == 'main'
+        && request.resource.data.keys().hasOnly(['title', 'budget', 'date', 'drawn', 'revealed']);
+    }
+
+    // One document per person. The document ID is that person's login code.
+    match /people/{code} {
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly([
+             'name', 'admin', 'claimed', 'done', 'bought', 'kindness',
+             'answers', 'codename', 'giveTo'
+           ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 60;
+    }
+
+    // Anonymous questions sent to each person. The document ID is the person's login code.
+    match /chats/{code} {
+      allow read: if signedIn();
+      allow write: if signedIn()
+        && request.resource.data.keys().hasOnly(['items'])
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 4;
+    }
+
+    // Everything else is off limits.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
